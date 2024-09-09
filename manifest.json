@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "Leetcode Timer",
+    "description": "Timer for Leetcode that records time taken for each question and stores in csv file",
+    "version": "1.0",
+    "action": {
+      "default_popup": "leetcodeTimer.html",
+      "default_icon": "images/leetcode_timer_icon.png"
+    },
+    "permissions":[
+        "activeTab"
+    ],
+    "background":{
+        "service_worker": "leetcode_background_script.js"
+    }
+  }

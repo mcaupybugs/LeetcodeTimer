@@ -1,0 +1,12 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="32" cy="32" r="30" stroke="#FFA116" stroke-width="4" fill="#ffffff"/>
+  
+  <!-- Clock Hands -->
+  <line x1="32" y1="32" x2="32" y2="15" stroke="#FFA116" stroke-width="3" stroke-linecap="round"/>
+  <line x1="32" y1="32" x2="45" y2="32" stroke="#FFA116" stroke-width="3" stroke-linecap="round"/>
+  
+  <!-- Code Brackets -->
+  <path d="M18 20 L24 16 M18 44 L24 48" stroke="#FFA116" stroke-width="3" stroke-linecap="round"/>
+  <path d="M46 20 L40 16 M46 44 L40 48" stroke="#FFA116" stroke-width="3" stroke-linecap="round"/>
+</svg>
