@@ -8,9 +8,11 @@
       "default_icon": "images/leetcode_timer_icon.png"
     },
     "permissions":[
-        "activeTab"
+        "activeTab",
+        "tabs",
+        "storage"
     ],
     "background":{
-        "service_worker": "leetcode_background_script.js"
+        "service_worker": "background/leetcode_background_script.js"
     }
   }
