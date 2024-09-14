@@ -1,12 +1,11 @@
 var dataArray = [];
 var setArray = new Set();
 chrome.runtime.onStartup.addListener(function () {
-
-})
-chrome.tabs.onActivated.addListener((tab) => {
     chrome.storage.local.get(['leetcode_timer_file']).then((result) => {
         var file = result.leetcode_timer_file;
         if (!file) {
+            dataArray = [];
+            setArray = new Set()
             chrome.storage.local.set({ "leetcode_timer_file": dataArray }).then(() => {
                 console.log("The value is set")
             })
@@ -16,6 +15,8 @@ chrome.tabs.onActivated.addListener((tab) => {
         console.log(setArray)
         console.log(dataArray)
     })
+})
+chrome.tabs.onActivated.addListener((tab) => {
     chrome.tabs.get(tab.tabId, function (tab) {
         var pageTitle = tab.title
         var pageUrl = tab.url
