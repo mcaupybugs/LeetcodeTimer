@@ -1,68 +1,46 @@
-const CSV_FILE_NAME = 'leetcode_timer.csv';
-chrome.runtime.onStartup.addListener(function(){
-    
+var dataArray = [];
+var setArray = new Set();
+chrome.runtime.onStartup.addListener(function () {
+
 })
 chrome.tabs.onActivated.addListener((tab) => {
-    chrome.storage.local.get(CSV_FILE_NAME).then((result)=>{
-        var file = result.CSV_FILE_NAME;
-        if(!file){
-            var data = ConvertRawArrayToCSV(csvHeadings);
-            console.log([data])
-            const file_blob = new Blob([data], {type: 'text/csv;charset=utf-8,'})
-            chrome.storage.local.set(CSV_FILE_NAME, file_blob)
+    chrome.storage.local.get(['leetcode_timer_file']).then((result) => {
+        var file = result.leetcode_timer_file;
+        if (!file) {
+            chrome.storage.local.set({ "leetcode_timer_file": dataArray }).then(() => {
+                console.log("The value is set")
+            })
         }
-        console.log(result.CSV_FILE_NAME)
-        console.log("running")
+        dataArray = file ? file : [];
+        setArray = file ? new Set(file.map(item => item.questionTitle)) : new Set();
+        console.log(setArray)
+        console.log(dataArray)
     })
-    chrome.tabs.get(tab.tabId, function(tab){
+    chrome.tabs.get(tab.tabId, function (tab) {
         var pageTitle = tab.title
         var pageUrl = tab.url
-        if(checkLeetcodePage(pageUrl)){
-
+        if (checkLeetcodePage(pageUrl) && !setArray.has(pageTitle)) {
+            dataArray.push(new CSVDataModel(pageTitle, pageUrl, "10", new Date().toDateString()))
+            chrome.storage.local.set({ "leetcode_timer_file": dataArray })
         }
     })
-  });
+});
 
 // Add all the check conditions in this file
-function checkLeetcodePage(url){
-    if(url.includes("https://leetcode.com/problems/")){
+function checkLeetcodePage(url) {
+    if (url.includes("https://leetcode.com/problems/")) {
         return true;
     }
     return false;
 }
 
-// ------------------------------------ Converting the data oprations --------------
-
-function ConvertDataModelArrayToCSV(data){
-    let csvContent = ''
-    csvContent += data.questionTitle + ',\n';
-    csvContent+=data.questionUrl + ',\n';
-    csvContent += data.timeTaken + ',\n';
-    csvContent += data.date + ',\n';
-
-    return csvContent;
-}
-
-function ConvertRawArrayToCSV(data){
-    let csvContent = ''
-
-    data.forEach(element => {
-        csvContent += element + ',\n';
-    });
-    return csvContent;
-}
-
 // ------------------------------------------- Data model -----------------
 
-const csvHeadings = ['Question Title', 'Question Url', 'Time Taken', 'Date']
-
-function CSVDataModel(questionTitle, questionUrl, timeTaken, date){
-    var data = {}
-
-    data.questionTitle = questionTitle;
-    data.questionUrl = questionUrl;
-    data.timeTaken = timeTaken;
-    data.date = date;
-
-    return data;
+function CSVDataModel(questionTitle, questionUrl, timeTaken, date) {
+    return {
+        "questionTitle": questionTitle,
+        "questionUrl": questionUrl,
+        "timeTaken": timeTaken,
+        "date": date
+    }
 }
