@@ -5,29 +5,30 @@ chrome.runtime.onStartup.addListener(function () {
 })
 
 chrome.tabs.onActivated.addListener((tab) => {
-    ensureFilePresent();
-    chrome.tabs.get(tab.tabId, function (tab) {
+    getActiveTabInformation(tab.tabId)
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+    if (changeInfo.status === 'complete' && tab.title && tab.title !== "- LeetCode") {
+        console.log(changeInfo)
+        console.log(tab)
+        getActiveTabInformation(tabId)
+    }
+});
+
+function getActiveTabInformation(tabId) {
+    chrome.tabs.get(tabId, function (tab) {
         var pageTitle = tab.title
         var pageUrl = tab.url
         console.log(dataArray)
         console.log(setArray)
+        ensureFilePresent();
         if (checkLeetcodePage(pageUrl) && !setArray.has(pageTitle)) {
             dataArray.push(new CSVDataModel(pageTitle, pageUrl, "10", new Date().toDateString()))
             chrome.storage.local.set({ "leetcode_timer_file": dataArray })
         }
     })
-});
-
-chrome.tabs.onUpdated.addListener((tabId) => {
-    chrome.tabs.get(tabId, function (tab) {
-        var pageTitle = tab.title
-        var pageUrl = tab.url
-        if (checkLeetcodePage(pageUrl) && !setArray.has(pageTitle)) {
-            dataArray.push(new CSVDataModel(pageTitle, pageUrl, "10", new Date().toDateString()))
-            chrome.storage.local.set({ "leetcode_timer_file": dataArray })
-        }
-    })
-});
+}
 
 // Add all the check conditions in this file
 function checkLeetcodePage(url) {
