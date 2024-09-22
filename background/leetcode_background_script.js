@@ -1,6 +1,5 @@
 var dataArray = [];
 var setArray = new Set();
-var ideButtons;
 chrome.runtime.onStartup.addListener(function () {
     ensureFilePresent();
 })
@@ -32,6 +31,7 @@ async function handleExtensionOperations(tabId) {
         console.log(dataArray)
         console.log(setArray)
         handleDataEntryOperations(pageInfo)
+        handleInjectingTimerOperation(tabId);
     }
 }
 
@@ -53,6 +53,15 @@ async function getActiveTabInformation(tabId) {
     return { pageTitle, pageUrl };
 }
 
+function handleInjectingTimerOperation(tabId) {
+    chrome.scripting
+        .executeScript({
+            target: { tabId: tabId },
+            files: ["timerScript.js"],
+        })
+        .then(() => console.log("script injected"));
+}
+
 // Add all the check conditions in this file
 function checkLeetcodePage(url) {
     if (url.includes("https://leetcode.com/problems/")) {
@@ -67,11 +76,6 @@ function isTabLeetcodeEdgeRenderCase(pageTitle) {
 
 function isQuestionPreviouslyVisited(pageTitle) {
     return !setArray.has(pageTitle);
-}
-
-function getIdeButtons() {
-    ideButtons = document.getElementById('ide-top-btns')
-    console.log("IdeButtons", ideButtons)
 }
 
 function handleFileNotFound(result) {
