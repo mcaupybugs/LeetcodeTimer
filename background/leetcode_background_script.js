@@ -1,33 +1,56 @@
 var dataArray = [];
 var setArray = new Set();
+var ideButtons;
 chrome.runtime.onStartup.addListener(function () {
     ensureFilePresent();
 })
 
-chrome.tabs.onActivated.addListener((tab) => {
-    getActiveTabInformation(tab.tabId)
-});
-
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.title && tab.title !== "- LeetCode") {
-        console.log(changeInfo)
-        console.log(tab)
-        getActiveTabInformation(tabId)
+chrome.tabs.onActivated.addListener(async (tab) => {
+    try {
+        pageInfo = await handleExtensionOperations(tab.tabId)
+    }
+    catch (e) {
+        console.log("Method failed with exception: ", { e })
     }
 });
 
-function getActiveTabInformation(tabId) {
-    chrome.tabs.get(tabId, function (tab) {
-        var pageTitle = tab.title
-        var pageUrl = tab.url
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    try {
+        if (changeInfo.status === 'complete') {
+            pageInfo = await handleExtensionOperations(tabId)
+        }
+    }
+    catch (e) {
+        console.log("Method failed with exception: ", { e })
+    }
+});
+
+async function handleExtensionOperations(tabId) {
+    ensureFilePresent();
+    pageInfo = await getActiveTabInformation(tabId);
+    if (checkLeetcodePage(pageInfo?.pageUrl) && !isTabLeetcodeEdgeRenderCase(pageInfo?.pageTitle)) {
         console.log(dataArray)
         console.log(setArray)
-        ensureFilePresent();
-        if (checkLeetcodePage(pageUrl) && !setArray.has(pageTitle)) {
-            dataArray.push(new CSVDataModel(pageTitle, pageUrl, "10", new Date().toDateString()))
-            chrome.storage.local.set({ "leetcode_timer_file": dataArray })
-        }
-    })
+        handleDataEntryOperations(pageInfo)
+    }
+}
+
+function handleDataEntryOperations(pageInfo) {
+    if (pageInfo == null) {
+        throw new Error("pageInfo found null")
+    }
+    if (isQuestionPreviouslyVisited(pageInfo?.pageTitle)) {
+        dataArray.push(new CSVDataModel(pageInfo.pageTitle, pageInfo.pageUrl, "10", new Date().toDateString()))
+        chrome.storage.local.set({ "leetcode_timer_file": dataArray })
+    }
+}
+
+async function getActiveTabInformation(tabId) {
+    const tab = await chrome.tabs.get(tabId);
+    const pageTitle = tab.title;
+    const pageUrl = tab.url;
+
+    return { pageTitle, pageUrl };
 }
 
 // Add all the check conditions in this file
@@ -36,6 +59,19 @@ function checkLeetcodePage(url) {
         return true;
     }
     return false;
+}
+
+function isTabLeetcodeEdgeRenderCase(pageTitle) {
+    return pageTitle === "- LeetCode"
+}
+
+function isQuestionPreviouslyVisited(pageTitle) {
+    return !setArray.has(pageTitle);
+}
+
+function getIdeButtons() {
+    ideButtons = document.getElementById('ide-top-btns')
+    console.log("IdeButtons", ideButtons)
 }
 
 function handleFileNotFound(result) {
