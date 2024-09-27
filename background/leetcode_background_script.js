@@ -1,5 +1,7 @@
 var dataArray = [];
 var setArray = new Set();
+const TIMER_LC_EXTENSION = 'timer-lc-extension';
+
 chrome.runtime.onStartup.addListener(function () {
     ensureFilePresent();
 })
@@ -57,9 +59,28 @@ function handleInjectingTimerOperation(tabId) {
     chrome.scripting
         .executeScript({
             target: { tabId: tabId },
-            files: ["timerScript.js"],
+            func: initializeTimer,
+            args: [TIMER_LC_EXTENSION]
         })
         .then(() => console.log("script injected"));
+}
+
+function initializeTimer(TIMER_LC_EXTENSION) {
+    if (!document.getElementById(TIMER_LC_EXTENSION)) {
+        var ideButtonsElement = document.getElementById('ide-top-btns')
+        ideButtonsElement.appendChild(createTimerElement())
+    }
+}
+
+function createTimerElement() {
+    var divElement = document.createElement('div');
+    divElement.className = "relative flex";
+    divElement.id = TIMER_LC_EXTENSION;
+    var childTextElement = document.createElement('p')
+    childTextElement.className = 'w-56 text-center text-xl'
+    childTextElement.innerText = "Timer"
+    divElement.appendChild(childTextElement);
+    return divElement;
 }
 
 // Add all the check conditions in this file
