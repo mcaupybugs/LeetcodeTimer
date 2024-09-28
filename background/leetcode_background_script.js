@@ -8,6 +8,7 @@ chrome.runtime.onStartup.addListener(function () {
     ensureFilePresent();
 });
 
+// ----------- Listeners -------------------------------
 chrome.tabs.onActivated.addListener(async (tab) => {
     try {
         pageInfo = await handleExtensionOperations(tab.tabId);
@@ -18,7 +19,6 @@ chrome.tabs.onActivated.addListener(async (tab) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     try {
-        console.log("This fired")
         if (changeInfo.status === "complete") {
             await handleExtensionOperations(tabId);
         }
@@ -37,6 +37,8 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     }
 });
 
+// -------------- Helper Methods --------------------
+
 async function handleExtensionOperations(tabId) {
     ensureFilePresent();
     pageInfo = await getActiveTabInformation(tabId);
@@ -47,20 +49,24 @@ async function handleExtensionOperations(tabId) {
         console.log(dataArray);
         console.log(setArray);
         handleDataEntryOperations(pageInfo);
-        var currentQuestionData = getCurrentQuestionData(pageInfo?.pageTitle);
+        var currentQuestionData = getQuestionData(pageInfo?.pageTitle);
         handleInjectingTimerOperation(tabId, currentQuestionData[0]?.timeTaken.hours, currentQuestionData[0]?.timeTaken.minutes, currentQuestionData[0]?.timeTaken.seconds);
     }
 }
 
 async function handlePageClosingOperations(tabId) {
     ensureFilePresent();
-    pageInfo = await getActiveTabInformation(tabId)
-    console.log("REmove", pageInfo)
+    var closingQuestionData = getQuestionBasedOnLastTabId(tabId);
+    console.log("Closingquestion", closingQuestionData)
+    if (!closingQuestionData[0]) {
+        throw new Error("Exception in finding the last closed question")
+    }
+    closingQuestionData = closingQuestionData[0];
     if (
-        checkLeetcodePage(pageInfo?.pageUrl) &&
-        !isTabLeetcodeEdgeRenderCase(pageInfo?.pageTitle)
+        checkLeetcodePage(closingQuestionData?.questionUrl) &&
+        !isTabLeetcodeEdgeRenderCase(closingQuestionData?.questionTitle)
     ) {
-        handleTimeUpdateOperation(pageInfo)
+        handleTimeUpdateOperation(closingQuestionData)
     }
 }
 
@@ -69,7 +75,7 @@ async function getActiveTabInformation(tabId) {
     const pageTitle = tab.title;
     const pageUrl = tab.url;
 
-    return { pageTitle, pageUrl };
+    return { pageTitle, pageUrl, tabId };
 }
 
 function handleDataEntryOperations(pageInfo) {
@@ -78,18 +84,26 @@ function handleDataEntryOperations(pageInfo) {
     }
     if (!isQuestionPreviouslyVisited(pageInfo?.pageTitle)) {
         var updatedDataList = putCurrentQuestionInToDataList(new CSVDataModel(
+            pageInfo?.tabId,
             pageInfo.pageTitle,
             pageInfo.pageUrl,
             new TimeModel(),
             new Date().toDateString()
         ))
         chrome.storage.local.set({ leetcode_timer_file: updatedDataList });
+    } else {
+        var question = getQuestionData(pageInfo?.pageTitle);
+        dataArray = removeDataListEntry(question?.questionTitle);
+        question.lastTabId = pageInfo?.tabId;
+        console.log("Tabid", pageInfo?.tabId)
+        putCurrentQuestionInToDataList(question)
+        console.log(dataArray, "Dtata")
+        chrome.storage.local.set({ leetcode_timer_file: dataArray })
     }
 }
 
-function handleTimeUpdateOperation(pageInfo) {
-    var currentQuestionData = getCurrentQuestionData(pageInfo?.pageTitle);
-    dataArray = dataArray.filter((data) => data.questionTitle != currentQuestionData.questionTitle);
+function handleTimeUpdateOperation(currentQuestionData) {
+    dataArray = removeDataListEntry(currentQuestionData.questionTitle)
     currentQuestionData.timeTaken = new TimeModel(current_question_hours, current_question_minutes, current_question_seconds);
     dataArray.push(currentQuestionData);
 }
@@ -210,8 +224,12 @@ function ensureFilePresent() {
 
 // GET 
 
-function getCurrentQuestionData(title) {
+function getQuestionData(title) {
     return dataArray.filter((data) => data.questionTitle == title);
+}
+
+function getQuestionBasedOnLastTabId(tabId) {
+    return dataArray.filter((data) => data.lastTabId == tabId);
 }
 
 // POST
@@ -221,10 +239,16 @@ function putCurrentQuestionInToDataList(question) {
     return dataArray;
 }
 
+function removeDataListEntry(pageTitle) {
+    dataArray = dataArray.filter((data) => data.title != pageTitle)
+    return dataArray;
+}
+
 // ------------------------------------------- Data model -----------------
 
-function CSVDataModel(questionTitle, questionUrl, timeTaken, date) {
+function CSVDataModel(tabId, questionTitle, questionUrl, timeTaken, date) {
     return {
+        lastTabId: tabId,
         questionTitle: questionTitle,
         questionUrl: questionUrl,
         timeTaken: timeTaken,
