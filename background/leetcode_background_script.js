@@ -77,21 +77,59 @@ function initializeTimer(
     TIMER_LC_EXTENSION,
     { hours = 0, minutes = 0, seconds = 0 }
 ) {
+    let intervalId;
+    let isPaused = false;
     if (!document.getElementById(TIMER_LC_EXTENSION)) {
         const formatTime = (time) => time.toString().padStart(2, "0");
 
-        const formattedTime = `${formatTime(hours)}:${formatTime(
+        var formattedTime = `${formatTime(hours)}:${formatTime(
             minutes
         )}:${formatTime(seconds)}`;
         var ideButtonsElement = document.getElementById("ide-top-btns");
-        var divElement = document.createElement("div");
-        divElement.className = "relative flex";
-        divElement.id = TIMER_LC_EXTENSION;
+
+        var timerDivElement = document.createElement("div");
+        timerDivElement.className = "relative flex w-56 gap-2 ml-2";
+        timerDivElement.id = TIMER_LC_EXTENSION;
+
         var childTextElement = document.createElement("p");
-        childTextElement.className = "w-56 text-center text-xl";
+        childTextElement.className = "text-center text-xl";
         childTextElement.innerText = formattedTime;
-        divElement.appendChild(childTextElement);
-        ideButtonsElement.appendChild(divElement);
+
+        // Create the pause/resume button
+        var pauseButton = document.createElement("button");
+        pauseButton.className = "bg-blue-500 text-white";
+        pauseButton.innerHTML = '⏸'
+
+        timerDivElement.appendChild(childTextElement);
+        timerDivElement.appendChild(pauseButton);
+
+        ideButtonsElement.appendChild(timerDivElement);
+        // Function to update the timer every second
+        const updateTimer = () => {
+            if (!isPaused) {
+                seconds++;
+                if (seconds > 59) {
+                    seconds = 0;
+                    minutes++;
+                    if (minutes > 59) {
+                        minutes = 0;
+                        hours++;
+                    }
+                }
+                formattedTime = `${formatTime(hours)}:${formatTime(
+                    minutes
+                )}:${formatTime(seconds)}`;
+                childTextElement.innerText = formattedTime; // Update the displayed time
+            }
+        };
+
+        intervalId = setInterval(updateTimer, 1000);
+
+        pauseButton.addEventListener("click", () => {
+            isPaused = !isPaused;
+            pauseButton.innerText = isPaused ? '▶' : '⏸';
+        })
+
     }
 }
 
