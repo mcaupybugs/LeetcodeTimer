@@ -1,7 +1,9 @@
 var dataArray = [];
 var setArray = new Set();
 const TIMER_LC_EXTENSION = "timer-lc-extension";
-
+const current_question_hours = 0;
+const current_question_minutes = 0;
+const current_question_seconds = 0;
 chrome.runtime.onStartup.addListener(function () {
     ensureFilePresent();
 });
@@ -16,11 +18,22 @@ chrome.tabs.onActivated.addListener(async (tab) => {
 
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     try {
+        console.log("This fired")
         if (changeInfo.status === "complete") {
-            pageInfo = await handleExtensionOperations(tabId);
+            await handleExtensionOperations(tabId);
         }
     } catch (e) {
         console.log("Method failed with exception: ", { e });
+    }
+});
+
+chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+    try {
+        console.log(removeInfo)
+        await handlePageClosingOperations(tabId);
+    }
+    catch (e) {
+        console.log("Method failed with exception: ", { e })
     }
 });
 
@@ -34,24 +47,20 @@ async function handleExtensionOperations(tabId) {
         console.log(dataArray);
         console.log(setArray);
         handleDataEntryOperations(pageInfo);
-        handleInjectingTimerOperation(tabId);
+        var currentQuestionData = getCurrentQuestionData(pageInfo?.pageTitle);
+        handleInjectingTimerOperation(tabId, currentQuestionData[0]?.timeTaken.hours, currentQuestionData[0]?.timeTaken.minutes, currentQuestionData[0]?.timeTaken.seconds);
     }
 }
 
-function handleDataEntryOperations(pageInfo) {
-    if (pageInfo == null) {
-        throw new Error("pageInfo found null");
-    }
-    if (!isQuestionPreviouslyVisited(pageInfo?.pageTitle)) {
-        dataArray.push(
-            new CSVDataModel(
-                pageInfo.pageTitle,
-                pageInfo.pageUrl,
-                "10",
-                new Date().toDateString()
-            )
-        );
-        chrome.storage.local.set({ leetcode_timer_file: dataArray });
+async function handlePageClosingOperations(tabId) {
+    ensureFilePresent();
+    pageInfo = await getActiveTabInformation(tabId)
+    console.log("REmove", pageInfo)
+    if (
+        checkLeetcodePage(pageInfo?.pageUrl) &&
+        !isTabLeetcodeEdgeRenderCase(pageInfo?.pageTitle)
+    ) {
+        handleTimeUpdateOperation(pageInfo)
     }
 }
 
@@ -61,6 +70,28 @@ async function getActiveTabInformation(tabId) {
     const pageUrl = tab.url;
 
     return { pageTitle, pageUrl };
+}
+
+function handleDataEntryOperations(pageInfo) {
+    if (pageInfo == null) {
+        throw new Error("pageInfo found null");
+    }
+    if (!isQuestionPreviouslyVisited(pageInfo?.pageTitle)) {
+        var updatedDataList = putCurrentQuestionInToDataList(new CSVDataModel(
+            pageInfo.pageTitle,
+            pageInfo.pageUrl,
+            new TimeModel(),
+            new Date().toDateString()
+        ))
+        chrome.storage.local.set({ leetcode_timer_file: updatedDataList });
+    }
+}
+
+function handleTimeUpdateOperation(pageInfo) {
+    var currentQuestionData = getCurrentQuestionData(pageInfo?.pageTitle);
+    dataArray = dataArray.filter((data) => data.questionTitle != currentQuestionData.questionTitle);
+    currentQuestionData.timeTaken = new TimeModel(current_question_hours, current_question_minutes, current_question_seconds);
+    dataArray.push(currentQuestionData);
 }
 
 function handleInjectingTimerOperation(tabId, hours = 0, minutes = 0, seconds = 0) {
@@ -119,6 +150,9 @@ function initializeTimer(
                 formattedTime = `${formatTime(hours)}:${formatTime(
                     minutes
                 )}:${formatTime(seconds)}`;
+                current_question_hours = hours;
+                current_question_minutes = minutes;
+                current_question_seconds = seconds;
                 childTextElement.innerText = formattedTime; // Update the displayed time
             }
         };
@@ -165,10 +199,26 @@ function ensureFilePresent() {
         handleFileNotFound(result);
         var file = result.leetcode_timer_file;
         dataArray = file ? file : [];
+        console.log("File", file)
         setArray = file
             ? new Set(file.map((item) => item.questionTitle))
             : new Set();
     });
+}
+
+// ------------------------- Data Array Operations -----------------------
+
+// GET 
+
+function getCurrentQuestionData(title) {
+    return dataArray.filter((data) => data.questionTitle == title);
+}
+
+// POST
+
+function putCurrentQuestionInToDataList(question) {
+    dataArray.push(question);
+    return dataArray;
 }
 
 // ------------------------------------------- Data model -----------------
@@ -180,4 +230,12 @@ function CSVDataModel(questionTitle, questionUrl, timeTaken, date) {
         timeTaken: timeTaken,
         date: date,
     };
+}
+
+function TimeModel(hours = 0, minutes = 0, seconds = 0) {
+    return {
+        hours: hours,
+        minutes: minutes,
+        seconds: seconds
+    }
 }
