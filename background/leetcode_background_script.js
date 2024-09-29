@@ -1,6 +1,8 @@
 var dataArray = [];
 var setArray = new Set();
 const TIMER_LC_EXTENSION = "timer-lc-extension";
+let previousUrl = ""; // Store the current URL
+
 chrome.runtime.onStartup.addListener(async function () {
   await ensureFilePresent();
 });
@@ -17,6 +19,7 @@ chrome.tabs.onActivated.addListener(async (tab) => {
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   try {
     if (changeInfo.status === "complete") {
+      previousUrl = tab.url;
       await handleExtensionOperations(tabId);
     }
   } catch (e) {
@@ -32,6 +35,18 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     console.log("Method failed with exception: ", { e });
   }
 });
+
+chrome.webNavigation.onBeforeNavigate.addListener(
+  function (details) {
+    if (isValidLeetcodeUrl(previousUrl)) {
+      console.log("Running");
+      handlePageClosingOperations(details.tabId);
+    }
+  },
+  {
+    url: [{ urlMatches: "https://leetcode.com/*" }], // Match specific pages if needed
+  }
+);
 
 // -------------- Helper Methods --------------------
 
@@ -121,11 +136,10 @@ function handleTimeUpdateOperation(currentQuestionData) {
   var timeTakenInCurrentSession =
     Date.now() - currentQuestionData.lastActiveTime;
   var timeTaken =
-    timeTakenInCurrentSession +
-    (currentQuestionData.timeTaken.hours * 60 * 60 +
+    timeTakenInCurrentSession + 
+    ((currentQuestionData.timeTaken.hours * 60 * 60 +
       currentQuestionData.timeTaken.minutes * 60 +
-      currentQuestionData.timeTaken.seconds) *
-      1000;
+      currentQuestionData.timeTaken.seconds) * 1000);
   let hours = Math.floor(timeTaken / (1000 * 60 * 60)); // 1 hour = 1000ms * 60s * 60m
   let minutes = Math.floor((timeTaken % (1000 * 60 * 60)) / (1000 * 60)); // Remaining minutes
   let seconds = Math.floor((timeTaken % (1000 * 60)) / 1000); // Remaining seconds
@@ -218,11 +232,20 @@ function checkLeetcodePage(url) {
 }
 
 function isTabLeetcodeEdgeRenderCase(pageTitle) {
-  return pageTitle === "- LeetCode";
+  return (
+    pageTitle === "- LeetCode" || pageTitle.startsWith("leetcode.com/problems")
+  );
 }
 
 function isQuestionPreviouslyVisited(pageTitle) {
   return setArray.has(pageTitle);
+}
+
+function isValidLeetcodeUrl(url) {
+  if (url && url.match(/^https:\/\/leetcode\.com\/problems\/[^\/]+\/?.*/)) {
+    return true;
+  }
+  return false;
 }
 
 function handleFileNotFound(result) {
