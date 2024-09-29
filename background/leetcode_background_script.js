@@ -2,6 +2,7 @@ var dataArray = [];
 var setArray = new Set();
 const TIMER_LC_EXTENSION = "timer-lc-extension";
 let previousUrl = ""; // Store the current URL
+let previousTabId = ""
 
 chrome.runtime.onStartup.addListener(async function () {
   await ensureFilePresent();
@@ -10,7 +11,10 @@ chrome.runtime.onStartup.addListener(async function () {
 // ----------- Listeners -------------------------------
 chrome.tabs.onActivated.addListener(async (tab) => {
   try {
+    await handlePageClosingOperations(previousTabId)
     pageInfo = await handleExtensionOperations(tab.tabId);
+    previousUrl = pageInfo?.pageUrl;
+    previousTabId = pageInfo?.tabId;
   } catch (e) {
     console.log("Method failed with exception: ", { e });
   }
@@ -20,6 +24,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   try {
     if (changeInfo.status === "complete") {
       previousUrl = tab.url;
+      previousTabId = tabId;
       await handleExtensionOperations(tabId);
     }
   } catch (e) {
@@ -68,6 +73,7 @@ async function handleExtensionOperations(tabId) {
       currentQuestionData[0]?.timeTaken.minutes,
       currentQuestionData[0]?.timeTaken.seconds
     );
+    return pageInfo;
   }
 }
 
@@ -168,6 +174,10 @@ function initializeTimer(
   TIMER_LC_EXTENSION,
   { hours = 0, minutes = 0, seconds = 0 }
 ) {
+    const timerElement = document.getElementById(TIMER_LC_EXTENSION);
+        if (timerElement) {
+          timerElement.remove(); // Remove the timer element
+        }
   let intervalId;
   let isPaused = false;
   if (!document.getElementById(TIMER_LC_EXTENSION)) {
@@ -187,12 +197,12 @@ function initializeTimer(
     childTextElement.innerText = formattedTime;
 
     // Create the pause/resume button
-    var pauseButton = document.createElement("button");
-    pauseButton.className = "bg-blue-500 text-white";
-    pauseButton.innerHTML = "⏸";
+    // var pauseButton = document.createElement("button");
+    // pauseButton.className = "bg-blue-500 text-white";
+    // pauseButton.innerHTML = "⏸";
 
     timerDivElement.appendChild(childTextElement);
-    timerDivElement.appendChild(pauseButton);
+    // timerDivElement.appendChild(pauseButton);
 
     ideButtonsElement.appendChild(timerDivElement);
     // Function to update the timer every second
@@ -216,10 +226,10 @@ function initializeTimer(
 
     intervalId = setInterval(updateTimer, 1000);
 
-    pauseButton.addEventListener("click", () => {
-      isPaused = !isPaused;
-      pauseButton.innerText = isPaused ? "▶" : "⏸";
-    });
+    // pauseButton.addEventListener("click", () => {
+    //   isPaused = !isPaused;
+    //   pauseButton.innerText = isPaused ? "▶" : "⏸";
+    // });
   }
 }
 
