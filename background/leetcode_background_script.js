@@ -34,7 +34,6 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
   try {
-    console.log(removeInfo);
     await handlePageClosingOperations(tabId);
   } catch (e) {
     console.log("Method failed with exception: ", { e });
@@ -44,7 +43,6 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
 chrome.webNavigation.onBeforeNavigate.addListener(
   function (details) {
     if (isValidLeetcodeUrl(previousUrl)) {
-      console.log("Running");
       handlePageClosingOperations(details.tabId);
     }
   },
@@ -62,11 +60,8 @@ async function handleExtensionOperations(tabId) {
     checkLeetcodePage(pageInfo?.pageUrl) &&
     !isTabLeetcodeEdgeRenderCase(pageInfo?.pageTitle)
   ) {
-    console.log(dataArray);
-    console.log(setArray);
     handleDataEntryOperations(pageInfo);
     var currentQuestionData = getQuestionData(pageInfo?.pageTitle);
-    console.log(currentQuestionData[0]?.timeTaken, "time taken");
     handleInjectingTimerOperation(
       tabId,
       currentQuestionData[0]?.timeTaken.hours,
@@ -80,7 +75,6 @@ async function handleExtensionOperations(tabId) {
 async function handlePageClosingOperations(tabId) {
   await ensureFilePresent();
   var closingQuestionData = getQuestionBasedOnLastTabId(tabId);
-  console.log("Closing question", closingQuestionData);
   if (!closingQuestionData[0]) {
     return;
   }
@@ -123,22 +117,16 @@ function handleDataEntryOperations(pageInfo) {
       throw new Error("No records found with the current question");
     }
     question = question[0];
-    console.log("Question", question);
     removeDataListEntry(question?.questionTitle);
     question.lastTabId = pageInfo?.tabId;
     question.lastActiveTime = Date.now();
-    console.log("Tabid", pageInfo?.tabId);
-    console.log("Data array", dataArray);
     putCurrentQuestionInToDataList(question);
-    console.log("After print data arrya", dataArray);
     chrome.storage.local.set({ leetcode_timer_file: dataArray });
   }
 }
 
 function handleTimeUpdateOperation(currentQuestionData) {
   removeDataListEntry(currentQuestionData.questionTitle);
-  console.log(currentQuestionData.lastActiveTime, "activeTime");
-  console.log(Date.now() - currentQuestionData.lastActiveTime);
   var timeTakenInCurrentSession =
     Date.now() - currentQuestionData.lastActiveTime;
   var timeTaken =
@@ -149,7 +137,6 @@ function handleTimeUpdateOperation(currentQuestionData) {
   let hours = Math.floor(timeTaken / (1000 * 60 * 60)); // 1 hour = 1000ms * 60s * 60m
   let minutes = Math.floor((timeTaken % (1000 * 60 * 60)) / (1000 * 60)); // Remaining minutes
   let seconds = Math.floor((timeTaken % (1000 * 60)) / 1000); // Remaining seconds
-  console.log(hours, minutes, seconds);
   currentQuestionData.timeTaken = new TimeModel(hours, minutes, seconds);
   dataArray.push(currentQuestionData);
   chrome.storage.local.set({ leetcode_timer_file: dataArray });
@@ -274,7 +261,6 @@ async function ensureFilePresent() {
     handleFileNotFound(result);
     var file = result.leetcode_timer_file;
     dataArray = file ? file : [];
-    console.log("File", file);
     setArray = file
       ? new Set(file.map((item) => item.questionTitle))
       : new Set();
@@ -297,13 +283,11 @@ function getQuestionBasedOnLastTabId(tabId) {
 
 function putCurrentQuestionInToDataList(question) {
   dataArray.push(question);
-  console.log("print from currentquestion", dataArray);
   return dataArray;
 }
 
 function removeDataListEntry(pageTitle) {
   dataArray = dataArray.filter((data) => data.questionTitle != pageTitle);
-  console.log(dataArray);
   return dataArray;
 }
 
